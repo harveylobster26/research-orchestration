@@ -65,12 +65,17 @@ class ResearchPipeline:
         self._log(f"fetched web documents: {len(web_documents)}")
 
         self._log("stage: fetch podcasts")
+        podcast_limit = (
+            None
+            if self.settings.fetch.podcast_max_documents <= 0
+            else self.settings.fetch.podcast_max_documents
+        )
         podcast_documents = fetch_documents(
             podcast_results,
             self.fetcher,
             podcast_documents_cache_dir,
             self.settings.fetch,
-            max_documents=self.settings.fetch.podcast_max_documents,
+            max_documents=podcast_limit,
         )
         self._log(f"fetched podcast documents: {len(podcast_documents)}")
 

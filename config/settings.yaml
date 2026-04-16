@@ -19,7 +19,7 @@ fetch:
   user_agent: "local-research-orchestrator/0.1"
   timeout_seconds: 30
   max_documents: 36
-  podcast_max_documents: 12
+  podcast_max_documents: 0
   max_chars_per_document: 20000
 
 pipeline:

@@ -17,6 +17,7 @@ def fetch_documents(
     documents: list[FetchedDocument] = []
     seen_urls: set[str] = set()
     limit = settings.max_documents if max_documents is None else max_documents
+    unlimited = limit <= 0
 
     for batch in search_batches:
         for result in batch.results:
@@ -27,7 +28,7 @@ def fetch_documents(
                 documents.append(fetcher.fetch(result, cache_dir))
             except Exception:
                 continue
-            if len(documents) >= limit:
+            if not unlimited and len(documents) >= limit:
                 return documents
 
     return documents

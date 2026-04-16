@@ -68,7 +68,7 @@ class FetchSettings:
     user_agent: str = "local-research-orchestrator/0.1"
     timeout_seconds: int = 30
     max_documents: int = 36
-    podcast_max_documents: int = 12
+    podcast_max_documents: int = 0
     max_chars_per_document: int = 20000
 
 
