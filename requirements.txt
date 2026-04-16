@@ -1,0 +1,2 @@
+# Stdlib-only runtime by default.
+# Add optional packages later if you want richer HTML extraction or testing.

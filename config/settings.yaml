@@ -1,0 +1,26 @@
+ollama:
+  base_url: "http://127.0.0.1:11434"
+  main_model: "gemma4:latest"
+  utility_model: "gemma4:latest"
+  timeout_seconds: 120
+  temperature: 0.1
+
+searxng:
+  base_url: "http://127.0.0.1:8081"
+  language: "en-US"
+  results_per_query: 5
+  safe_search: 0
+  timeout_seconds: 30
+  default_engines: []
+
+fetch:
+  user_agent: "local-research-orchestrator/0.1"
+  timeout_seconds: 30
+  max_documents: 12
+  max_chars_per_document: 16000
+
+pipeline:
+  objective: "Find underfollowed public companies that benefit from AI infrastructure bottlenecks, gather evidence, rank candidates, reject weak ideas, and produce a markdown brief."
+  max_queries: 6
+  critique_enabled: false
+  profile: "early_discovery_ai_infra"
