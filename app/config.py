@@ -68,6 +68,7 @@ class FetchSettings:
     user_agent: str = "local-research-orchestrator/0.1"
     timeout_seconds: int = 30
     max_documents: int = 36
+    podcast_max_documents: int = 12
     max_chars_per_document: int = 20000
 
 
@@ -78,6 +79,7 @@ class PipelineSettings:
         "bottlenecks, gather evidence, rank candidates, reject weak ideas, and "
         "produce a markdown brief."
     )
+    min_queries: int = 18
     max_queries: int = 18
     critique_enabled: bool = False
     profile: str = "early_discovery_ai_infra"

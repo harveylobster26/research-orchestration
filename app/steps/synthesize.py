@@ -4,7 +4,7 @@ import json
 
 from app.config import AppSettings
 from app.providers.ollama_client import OllamaClient
-from app.schemas import Evidence, Plan, RankedCompany
+from app.schemas import Evidence, FetchedDocument, Plan, RankedCompany
 from app.utils import read_profile_prompt
 
 
@@ -15,6 +15,7 @@ def synthesize_brief(
     ranked_companies: list[RankedCompany],
     evidence: list[Evidence],
     rejected: list[Evidence],
+    documents: list[FetchedDocument],
 ) -> str:
     prompt = read_profile_prompt(
         settings.prompts_path,
@@ -23,6 +24,7 @@ def synthesize_brief(
     )
     payload = {
         "plan": plan.to_dict(),
+        "documents": [item.to_dict() for item in documents],
         "ranked_companies": [item.to_dict() for item in ranked_companies],
         "evidence": [item.to_dict() for item in evidence],
         "rejected": [item.to_dict() for item in rejected],

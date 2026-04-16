@@ -178,6 +178,9 @@ def _json_candidates(text: str) -> list[str]:
     extracted = _extract_balanced_json(text)
     if extracted and extracted not in candidates:
         candidates.append(extracted)
+    repaired = _repair_truncated_json(text)
+    if repaired and repaired not in candidates:
+        candidates.append(repaired)
     return candidates
 
 
@@ -231,3 +234,43 @@ def _normalize_json(text: str) -> str:
     for old, new in replacements.items():
         normalized = normalized.replace(old, new)
     return normalized.strip()
+
+
+def _repair_truncated_json(text: str) -> str | None:
+    normalized = _normalize_json(text)
+    if not normalized or normalized[0] not in "{[":
+        return None
+
+    stack: list[str] = []
+    in_string = False
+    escape = False
+    for char in normalized:
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+            continue
+        if char == "{":
+            stack.append("}")
+            continue
+        if char == "[":
+            stack.append("]")
+            continue
+        if char in "}]":
+            if not stack or stack[-1] != char:
+                return None
+            stack.pop()
+
+    repaired = normalized
+    if in_string:
+        repaired += '"'
+    if stack:
+        repaired += "".join(reversed(stack))
+    return repaired if repaired != normalized else None

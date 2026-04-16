@@ -40,6 +40,7 @@ class ResearchPipeline:
         self._log("stage: planning")
         plan = build_plan(self.settings, self.ollama, objective, run_dir=run_dir)
         write_json(run_dir / "plan.json", plan.to_dict())
+        self._log(f"planner returned {len(plan.queries)} queries")
 
         self._log(f"stage: search ({len(plan.queries)} queries)")
         search_results = run_search(plan, self.searxng)
@@ -48,13 +49,23 @@ class ResearchPipeline:
         self._log("stage: podcast transcripts")
         podcast_results = discover_podcast_transcripts(self.searxng)
         write_json(run_dir / "podcast_results.json", [item.to_dict() for item in podcast_results])
+        discovered_podcast_hits = sum(len(batch.results) for batch in podcast_results)
+        self._log(
+            f"podcast discovery returned {discovered_podcast_hits} hits across {len(podcast_results)} sources"
+        )
 
         self._log("stage: fetch web")
+        reserved_podcast_capacity = min(
+            self.settings.fetch.podcast_max_documents,
+            self.settings.fetch.max_documents,
+        )
+        web_capacity = max(self.settings.fetch.max_documents - reserved_podcast_capacity, 0)
         web_documents = fetch_documents(
             search_results,
             self.fetcher,
             web_documents_cache_dir,
             self.settings.fetch,
+            max_documents=web_capacity,
         )
         self._log(f"fetched web documents: {len(web_documents)}")
 
@@ -105,6 +116,7 @@ class ResearchPipeline:
             ranked_companies,
             extracted.evidence,
             extracted.rejected,
+            documents,
         )
         brief_path = run_dir / "brief.md"
         write_text(brief_path, brief)

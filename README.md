@@ -43,6 +43,7 @@ You can select a prompt/output profile:
 ```bash
 python -m app.main --profile early_discovery_ai_infra
 python -m app.main --profile weekly_scarcity_brief
+python -m app.main --profile weekly_ai_podcast_digest
 ```
 
 You can run a preflight check for local services:
