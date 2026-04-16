@@ -79,6 +79,7 @@ Fetched documents are cached across runs under:
 - The default Ollama setup uses `gemma4:latest` for planning, `gemma4:26b` for final synthesis, and `gemma4:latest` for utility extraction.
 - The pipeline now prints stage progress so you can see whether it is planning, searching, discovering podcast transcripts, fetching web pages, fetching podcast transcripts, extracting, scoring, or synthesizing.
 - Search is biased toward better transcript, IR, filing, and trade-press domains while blocking weak social and aggregator sources.
-- Deeper research defaults now use 18 planner queries, 12 search results per query, and up to 36 fetched documents.
+- Web research defaults now use 6 planner queries, 18 search results per query, and up to 36 fetched web documents.
+- Podcast transcript discovery is budgeted separately from web fetch. By default, `podcast_max_documents: 0` means fetch all discovered podcast episodes from the past week.
 - Prompt/result examples from your attached files are now represented as profile-specific prompt templates under [`prompts`](/Users/commander/Documents/research_orchestration/prompts).
 - If your local services are not on `http://127.0.0.1:11434` and `http://127.0.0.1:8081`, change them in [`config/settings.yaml`](/Users/commander/Documents/research_orchestration/config/settings.yaml).
