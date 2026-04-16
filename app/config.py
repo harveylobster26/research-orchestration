@@ -23,17 +23,49 @@ class SearxngSettings:
     base_url: str = "http://127.0.0.1:8081"
     default_engines: list[str] = field(default_factory=list)
     language: str = "en-US"
-    results_per_query: int = 5
+    results_per_query: int = 10
     safe_search: int = 0
     timeout_seconds: int = 30
+    preferred_domains: list[str] = field(
+        default_factory=lambda: [
+            "sec.gov",
+            "reuters.com",
+            "investor",
+            "ir.",
+            "seekingalpha.com",
+            "fool.com",
+            "zacks.com",
+            "marketbeat.com",
+            "powermag.com",
+            "semiengineering.com",
+            "eetimes.com",
+            "tomshardware.com",
+            "networkworld.com",
+            "datacenterdynamics.com",
+            "manufacturingdive.com",
+        ]
+    )
+    blocked_domains: list[str] = field(
+        default_factory=lambda: [
+            "facebook.com",
+            "instagram.com",
+            "tiktok.com",
+            "reddit.com",
+            "x.com",
+            "twitter.com",
+            "linkedin.com",
+            "academia.edu",
+            "issuu.com",
+        ]
+    )
 
 
 @dataclass
 class FetchSettings:
     user_agent: str = "local-research-orchestrator/0.1"
     timeout_seconds: int = 30
-    max_documents: int = 12
-    max_chars_per_document: int = 16000
+    max_documents: int = 20
+    max_chars_per_document: int = 20000
 
 
 @dataclass

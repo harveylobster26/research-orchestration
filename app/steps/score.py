@@ -5,14 +5,36 @@ from collections import defaultdict
 from app.schemas import Evidence, RankedCompany
 
 
+_INVALID_TICKERS = {
+    "",
+    "UNKNOWN",
+    "N/A",
+    "NA",
+    "NONE",
+    "NULL",
+    "NOT APPLICABLE",
+}
+
+_INVALID_COMPANIES = {
+    "",
+    "UNKNOWN",
+    "NONE",
+    "NULL",
+    "N/A",
+    "NA",
+    "NOT APPLICABLE",
+}
+
+
 def rank_companies(evidence_items: list[Evidence]) -> list[RankedCompany]:
-    by_ticker: dict[str, list[Evidence]] = defaultdict(list)
+    grouped: dict[str, list[Evidence]] = defaultdict(list)
     for item in evidence_items:
-        if item.ticker and item.ticker != "UNKNOWN":
-            by_ticker[item.ticker].append(item)
+        key = _group_key(item)
+        if key is not None:
+            grouped[key].append(item)
 
     ranked: list[RankedCompany] = []
-    for ticker, group in by_ticker.items():
+    for _, group in grouped.items():
         avg_relevance = _average([item.ai_infra_relevance for item in group])
         avg_underfollowed = _average([item.underfollowed_signal for item in group])
         avg_rerated = _average([item.rerated_risk for item in group])
@@ -27,6 +49,7 @@ def rank_companies(evidence_items: list[Evidence]) -> list[RankedCompany]:
         total_score += source_bonus
 
         lead = group[0]
+        ticker = lead.ticker if _valid_ticker(lead.ticker) else "UNKNOWN"
         ranked.append(
             RankedCompany(
                 company=lead.company,
@@ -47,6 +70,22 @@ def rank_companies(evidence_items: list[Evidence]) -> list[RankedCompany]:
         reverse=True,
     )
     return ranked
+
+
+def _group_key(item: Evidence) -> str | None:
+    if _valid_ticker(item.ticker):
+        return f"ticker:{item.ticker.upper()}"
+    if _valid_company(item.company):
+        return f"company:{item.company.casefold()}"
+    return None
+
+
+def _valid_ticker(ticker: str) -> bool:
+    return bool(ticker) and ticker.upper() not in _INVALID_TICKERS
+
+
+def _valid_company(company: str) -> bool:
+    return bool(company) and company.upper() not in _INVALID_COMPANIES
 
 
 def _average(values: list[float]) -> float:

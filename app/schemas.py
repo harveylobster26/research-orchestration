@@ -8,6 +8,17 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+_NULL_MARKERS = {
+    "",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "unknown",
+    "not applicable",
+}
+
+
 @dataclass
 class Plan:
     research_goal: str
@@ -85,8 +96,8 @@ class Evidence:
     @classmethod
     def from_dict(cls, payload: dict) -> "Evidence":
         return cls(
-            company=str(payload.get("company", "Unknown")),
-            ticker=str(payload.get("ticker", "UNKNOWN")),
+            company=_normalize_company(payload.get("company", "Unknown")),
+            ticker=_normalize_ticker(payload.get("ticker", "UNKNOWN")),
             bottleneck_category=str(payload.get("bottleneck_category", "unclassified")),
             source_url=str(payload.get("source_url", "")),
             source_type=str(payload.get("source_type", "web")),
@@ -150,3 +161,17 @@ def _bounded_float(value: object) -> float:
     except (TypeError, ValueError):
         numeric = 0.0
     return max(0.0, min(1.0, numeric))
+
+
+def _normalize_company(value: object) -> str:
+    text = str(value).strip()
+    if text.lower() in _NULL_MARKERS:
+        return "Unknown"
+    return text
+
+
+def _normalize_ticker(value: object) -> str:
+    text = str(value).strip()
+    if text.lower() in _NULL_MARKERS:
+        return "UNKNOWN"
+    return text.upper()
