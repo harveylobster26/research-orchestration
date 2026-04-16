@@ -12,9 +12,11 @@ def fetch_documents(
     fetcher: PageFetcher,
     cache_dir: Path,
     settings: FetchSettings,
+    max_documents: int | None = None,
 ) -> list[FetchedDocument]:
     documents: list[FetchedDocument] = []
     seen_urls: set[str] = set()
+    limit = settings.max_documents if max_documents is None else max_documents
 
     for batch in search_batches:
         for result in batch.results:
@@ -25,7 +27,7 @@ def fetch_documents(
                 documents.append(fetcher.fetch(result, cache_dir))
             except Exception:
                 continue
-            if len(documents) >= settings.max_documents:
+            if len(documents) >= limit:
                 return documents
 
     return documents

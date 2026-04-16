@@ -27,7 +27,8 @@ class ResearchPipeline:
 
     def run(self, objective: str) -> PipelineArtifacts:
         run_dir = build_run_dir(self.settings.data_path)
-        documents_cache_dir = self.settings.data_path / 'documents'
+        web_documents_cache_dir = self.settings.data_path / 'documents' / 'web'
+        podcast_documents_cache_dir = self.settings.data_path / 'documents' / 'podcasts'
         manifest = RunManifest(
             run_id=Path(run_dir).name,
             objective=objective,
@@ -48,17 +49,29 @@ class ResearchPipeline:
         podcast_results = discover_podcast_transcripts(self.searxng)
         write_json(run_dir / "podcast_results.json", [item.to_dict() for item in podcast_results])
 
-        all_search_results = [*search_results, *podcast_results]
-
-        self._log("stage: fetch")
-        documents = fetch_documents(
-            all_search_results,
+        self._log("stage: fetch web")
+        web_documents = fetch_documents(
+            search_results,
             self.fetcher,
-            documents_cache_dir,
+            web_documents_cache_dir,
             self.settings.fetch,
         )
+        self._log(f"fetched web documents: {len(web_documents)}")
+
+        remaining_capacity = max(self.settings.fetch.max_documents - len(web_documents), 0)
+        self._log("stage: fetch podcasts")
+        podcast_documents = fetch_documents(
+            podcast_results,
+            self.fetcher,
+            podcast_documents_cache_dir,
+            self.settings.fetch,
+            max_documents=remaining_capacity,
+        )
+        self._log(f"fetched podcast documents: {len(podcast_documents)}")
+
+        documents = [*web_documents, *podcast_documents]
         write_json(run_dir / "documents.json", [item.to_dict() for item in documents])
-        self._log(f"fetched documents: {len(documents)}")
+        self._log(f"fetched documents total: {len(documents)}")
 
         self._log("stage: extract")
         extracted: ExtractionResult = extract_evidence(
@@ -100,7 +113,7 @@ class ResearchPipeline:
         return PipelineArtifacts(
             manifest=manifest,
             plan=plan,
-            search_results=all_search_results,
+            search_results=[*search_results, *podcast_results],
             documents=documents,
             evidence=extracted.evidence + extracted.rejected,
             ranked_companies=ranked_companies,
