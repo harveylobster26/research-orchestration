@@ -23,7 +23,7 @@ class SearxngSettings:
     base_url: str = "http://127.0.0.1:8081"
     default_engines: list[str] = field(default_factory=list)
     language: str = "en-US"
-    results_per_query: int = 12
+    results_per_query: int = 18
     safe_search: int = 0
     timeout_seconds: int = 30
     preferred_domains: list[str] = field(
@@ -79,8 +79,8 @@ class PipelineSettings:
         "bottlenecks, gather evidence, rank candidates, reject weak ideas, and "
         "produce a markdown brief."
     )
-    min_queries: int = 18
-    max_queries: int = 18
+    min_queries: int = 6
+    max_queries: int = 6
     critique_enabled: bool = False
     profile: str = "early_discovery_ai_infra"
 

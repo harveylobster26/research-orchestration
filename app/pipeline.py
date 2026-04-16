@@ -55,28 +55,22 @@ class ResearchPipeline:
         )
 
         self._log("stage: fetch web")
-        reserved_podcast_capacity = min(
-            self.settings.fetch.podcast_max_documents,
-            self.settings.fetch.max_documents,
-        )
-        web_capacity = max(self.settings.fetch.max_documents - reserved_podcast_capacity, 0)
         web_documents = fetch_documents(
             search_results,
             self.fetcher,
             web_documents_cache_dir,
             self.settings.fetch,
-            max_documents=web_capacity,
+            max_documents=self.settings.fetch.max_documents,
         )
         self._log(f"fetched web documents: {len(web_documents)}")
 
-        remaining_capacity = max(self.settings.fetch.max_documents - len(web_documents), 0)
         self._log("stage: fetch podcasts")
         podcast_documents = fetch_documents(
             podcast_results,
             self.fetcher,
             podcast_documents_cache_dir,
             self.settings.fetch,
-            max_documents=remaining_capacity,
+            max_documents=self.settings.fetch.podcast_max_documents,
         )
         self._log(f"fetched podcast documents: {len(podcast_documents)}")
 
