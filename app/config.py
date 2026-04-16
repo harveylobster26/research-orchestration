@@ -10,9 +10,11 @@ from typing import Any
 @dataclass
 class OllamaSettings:
     base_url: str = "http://127.0.0.1:11434"
-    main_model: str = "gemma4:latest"
+    planning_model: str = "gemma4:latest"
+    main_model: str = "gemma4:26b"
     utility_model: str = "gemma4:latest"
-    timeout_seconds: int = 120
+    main_timeout_seconds: int = 1800
+    utility_timeout_seconds: int = 600
     temperature: float = 0.1
 
 

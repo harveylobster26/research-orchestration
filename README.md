@@ -23,7 +23,7 @@ Artifacts are written under `data/runs/<timestamp>/` so each run is inspectable 
 ## Quick start
 
 1. Create a virtual environment and install requirements.
-2. Update [`config/settings.yaml`](/Users/commander/Documents/research_orchestration/config/settings.yaml) if your local service URLs, model names, or profile differ.
+2. Update [`config/settings.yaml`](/Users/commander/Documents/research_orchestration/config/settings.yaml) if your local service URLs, model names, profile, or Ollama timeouts differ.
 3. Run:
 
 ```bash
@@ -65,7 +65,8 @@ Each run creates:
 
 - Open WebUI remains useful for prompt testing, but this app is the system of record.
 - The default config expects Ollama at `http://127.0.0.1:11434` and SearXNG at `http://127.0.0.1:8081`. Open WebUI at `http://localhost:3000` is not used as the workflow engine.
-- The default Ollama model is `gemma4:latest`. If you prefer a larger synthesis model, switch `main_model` to `gemma4:26b`.
+- The default Ollama setup uses `gemma4:latest` for planning, `gemma4:26b` for final synthesis, and `gemma4:latest` for utility extraction.
+- The pipeline now prints stage progress so you can see whether it is planning, searching, fetching, extracting, scoring, or synthesizing.
 - The pipeline prefers deterministic fallbacks when model output is malformed so runs stay debuggable.
 - Prompt/result examples from your attached files are now represented as profile-specific prompt templates under [`prompts`](/Users/commander/Documents/research_orchestration/prompts).
 - If your local services are not on `http://127.0.0.1:11434` and `http://127.0.0.1:8081`, change them in [`config/settings.yaml`](/Users/commander/Documents/research_orchestration/config/settings.yaml).

@@ -22,7 +22,8 @@ def extract_evidence(
     rejected: list[Evidence] = []
     query_context = ", ".join(plan.queries)
 
-    for document in documents:
+    for index, document in enumerate(documents, start=1):
+        print(f"[pipeline] extract document {index}/{len(documents)}: {document.title or document.url}", flush=True)
         prompt = (
             f"{prompt_template}\n\n"
             f"Research goal: {plan.research_goal}\n"
@@ -33,12 +34,21 @@ def extract_evidence(
             f"Document title: {document.title}\n"
             f"Document text:\n{document.clean_text}\n"
         )
-        raw = ollama.generate_json(
-            prompt,
-            model=settings.ollama.utility_model,
-            temperature=0.0,
-        )
-        items = raw.get("evidence") or [_fallback_rejection(document)]
+        try:
+            raw = ollama.generate_json(
+                prompt,
+                model=settings.ollama.utility_model,
+                temperature=0.0,
+                timeout_seconds=settings.ollama.utility_timeout_seconds,
+            )
+            items = raw.get("evidence") or [_fallback_rejection(document)]
+        except Exception as exc:
+            print(
+                f"[pipeline] extract warning for document {index}/{len(documents)}: {exc}",
+                flush=True,
+            )
+            items = [_fallback_rejection(document, reason=str(exc))]
+
         for item in items:
             merged = {
                 "source_url": document.url,
@@ -63,7 +73,11 @@ def _source_type_for_url(url: str) -> str:
     return "web"
 
 
-def _fallback_rejection(document: FetchedDocument) -> dict[str, object]:
+def _fallback_rejection(document: FetchedDocument, reason: str | None = None) -> dict[str, object]:
+    rejection_reason = reason or "No useful evidence found in document."
+    flags = ["model_extraction_failed_or_empty"]
+    if reason:
+        flags.append(f"parse_error: {reason[:200]}")
     return {
         "company": document.title or "Unknown",
         "ticker": "UNKNOWN",
@@ -74,7 +88,7 @@ def _fallback_rejection(document: FetchedDocument) -> dict[str, object]:
         "underfollowed_signal": 0.0,
         "rerated_risk": 0.0,
         "confidence": 0.0,
-        "red_flags": ["model_extraction_failed_or_empty"],
+        "red_flags": flags,
         "is_relevant": False,
-        "rejection_reason": "No useful evidence found in document.",
+        "rejection_reason": rejection_reason,
     }

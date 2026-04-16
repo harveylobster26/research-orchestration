@@ -19,6 +19,7 @@ class OllamaClient:
         model: str | None = None,
         format_json: bool = False,
         temperature: float | None = None,
+        timeout_seconds: int | None = None,
     ) -> str:
         payload: dict[str, Any] = {
             "model": model or self.settings.main_model,
@@ -35,7 +36,7 @@ class OllamaClient:
             raw = _post_json_with_local_fallback(
                 f"{self.settings.base_url.rstrip('/')}/api/generate",
                 payload,
-                timeout=self.settings.timeout_seconds,
+                timeout=timeout_seconds or self.settings.utility_timeout_seconds,
             )
         except Exception as exc:
             detail = str(exc) or exc.__class__.__name__
@@ -51,27 +52,42 @@ class OllamaClient:
         *,
         model: str | None = None,
         temperature: float | None = None,
+        timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
-        raw = self.generate(
+        attempts = [
             prompt,
-            model=model,
-            format_json=True,
-            temperature=temperature,
-        )
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            start = raw.find("{")
-            end = raw.rfind("}")
-            if start >= 0 and end > start:
-                return json.loads(raw[start : end + 1])
-            raise
+            prompt
+            + "\n\nIMPORTANT: Return exactly one valid JSON object. "
+            + "Do not include markdown fences, commentary, or trailing text.",
+        ]
+        last_error: Exception | None = None
+        last_raw = ""
+        for attempt_prompt in attempts:
+            raw = self.generate(
+                attempt_prompt,
+                model=model,
+                format_json=True,
+                temperature=temperature,
+                timeout_seconds=timeout_seconds,
+            )
+            last_raw = raw
+            try:
+                parsed = _parse_json_object(raw)
+                if isinstance(parsed, dict):
+                    return parsed
+                raise RuntimeError("Model returned a JSON value that is not an object.")
+            except Exception as exc:
+                last_error = exc
+
+        detail = str(last_error) if last_error else "unknown parse error"
+        sample = last_raw[:400].replace("\n", " ")
+        raise RuntimeError(f"Failed to parse JSON from Ollama response: {detail}. Response preview: {sample}")
 
     def healthcheck(self) -> dict[str, Any]:
         try:
             return _get_json_with_local_fallback(
                 f"{self.settings.base_url.rstrip('/')}/api/tags",
-                timeout=min(self.settings.timeout_seconds, 10),
+                timeout=min(self.settings.utility_timeout_seconds, 10),
             )
         except Exception as exc:
             raise RuntimeError(
@@ -138,3 +154,80 @@ def _candidate_local_urls(url: str) -> list[str]:
         if alternate not in candidates:
             candidates.append(alternate)
     return candidates
+
+
+def _parse_json_object(raw: str) -> Any:
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if len(lines) >= 3:
+            text = "\n".join(lines[1:-1]).strip()
+
+    for candidate in _json_candidates(text):
+        normalized = _normalize_json(candidate)
+        try:
+            return json.loads(normalized)
+        except json.JSONDecodeError:
+            continue
+
+    raise RuntimeError("No valid JSON object found in model response.")
+
+
+def _json_candidates(text: str) -> list[str]:
+    candidates: list[str] = [text]
+    extracted = _extract_balanced_json(text)
+    if extracted and extracted not in candidates:
+        candidates.append(extracted)
+    return candidates
+
+
+def _extract_balanced_json(text: str) -> str | None:
+    start = -1
+    opening = ""
+    for idx, char in enumerate(text):
+        if char in "[{":
+            start = idx
+            opening = char
+            break
+    if start < 0:
+        return None
+
+    closing = "}" if opening == "{" else "]"
+    depth = 0
+    in_string = False
+    escape = False
+    for idx in range(start, len(text)):
+        char = text[idx]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+            if depth == 0:
+                return text[start : idx + 1]
+
+    return None
+
+
+def _normalize_json(text: str) -> str:
+    replacements = {
+        "“": '"',
+        "”": '"',
+        "’": "'",
+        "‘": "'",
+        " ": " ",
+    }
+    normalized = text
+    for old, new in replacements.items():
+        normalized = normalized.replace(old, new)
+    return normalized.strip()

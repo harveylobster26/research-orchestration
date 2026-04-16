@@ -14,8 +14,9 @@ def build_plan(settings: AppSettings, ollama: OllamaClient, objective: str) -> P
     )
     raw = ollama.generate_json(
         f"{prompt}\n\nResearch objective:\n{objective}\n",
-        model=settings.ollama.main_model,
+        model=settings.ollama.planning_model,
         temperature=0.1,
+        timeout_seconds=settings.ollama.main_timeout_seconds,
     )
     plan = Plan.from_dict(raw)
     if settings.pipeline.max_queries:

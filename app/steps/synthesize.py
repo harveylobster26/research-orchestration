@@ -31,4 +31,5 @@ def synthesize_brief(
         f"{prompt}\n\nArtifacts:\n{json.dumps(payload, indent=2)}",
         model=settings.ollama.main_model,
         temperature=0.1,
+        timeout_seconds=settings.ollama.main_timeout_seconds,
     )

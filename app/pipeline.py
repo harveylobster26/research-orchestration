@@ -32,13 +32,17 @@ class ResearchPipeline:
             run_dir=str(run_dir),
         )
         write_json(run_dir / "manifest.json", manifest.to_dict())
+        self._log(f"run dir: {run_dir}")
 
+        self._log("stage: planning")
         plan = build_plan(self.settings, self.ollama, objective)
         write_json(run_dir / "plan.json", plan.to_dict())
 
+        self._log(f"stage: search ({len(plan.queries)} queries)")
         search_results = run_search(plan, self.searxng)
         write_json(run_dir / "search_results.json", [item.to_dict() for item in search_results])
 
+        self._log("stage: fetch")
         documents = fetch_documents(
             search_results,
             self.fetcher,
@@ -46,7 +50,9 @@ class ResearchPipeline:
             self.settings.fetch,
         )
         write_json(run_dir / "documents.json", [item.to_dict() for item in documents])
+        self._log(f"fetched documents: {len(documents)}")
 
+        self._log("stage: extract")
         extracted: ExtractionResult = extract_evidence(
             self.settings,
             self.ollama,
@@ -60,10 +66,16 @@ class ResearchPipeline:
                 "rejected": [item.to_dict() for item in extracted.rejected],
             },
         )
+        self._log(
+            f"extracted evidence: {len(extracted.evidence)} relevant, {len(extracted.rejected)} rejected"
+        )
 
+        self._log("stage: score")
         ranked_companies = rank_companies(extracted.evidence)
         write_json(run_dir / "ranked_companies.json", [item.to_dict() for item in ranked_companies])
+        self._log(f"ranked companies: {len(ranked_companies)}")
 
+        self._log("stage: synthesize")
         brief = synthesize_brief(
             self.settings,
             self.ollama,
@@ -74,6 +86,7 @@ class ResearchPipeline:
         )
         brief_path = run_dir / "brief.md"
         write_text(brief_path, brief)
+        self._log(f"brief written: {brief_path}")
 
         return PipelineArtifacts(
             manifest=manifest,
@@ -103,3 +116,7 @@ class ResearchPipeline:
             statuses.append(("searxng", f"error ({exc})"))
 
         return statuses
+
+    @staticmethod
+    def _log(message: str) -> None:
+        print(f"[pipeline] {message}", flush=True)

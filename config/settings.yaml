@@ -1,8 +1,10 @@
 ollama:
   base_url: "http://127.0.0.1:11434"
-  main_model: "gemma4:latest"
+  planning_model: "gemma4:latest"
+  main_model: "gemma4:26b"
   utility_model: "gemma4:latest"
-  timeout_seconds: 120
+  main_timeout_seconds: 1800
+  utility_timeout_seconds: 600
   temperature: 0.1
 
 searxng:
