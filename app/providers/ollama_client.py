@@ -170,6 +170,10 @@ def _parse_json_object(raw: str) -> Any:
         except json.JSONDecodeError:
             continue
 
+    heuristic = _heuristic_partial_object(text)
+    if heuristic is not None:
+        return heuristic
+
     raise RuntimeError("No valid JSON object found in model response.")
 
 
@@ -274,3 +278,97 @@ def _repair_truncated_json(text: str) -> str | None:
     if stack:
         repaired += "".join(reversed(stack))
     return repaired if repaired != normalized else None
+
+
+def _heuristic_partial_object(text: str) -> dict[str, Any] | None:
+    normalized = _normalize_json(text)
+    if '"evidence"' not in normalized:
+        return None
+
+    fields: dict[str, Any] = {}
+    for key in [
+        "company",
+        "ticker",
+        "bottleneck_category",
+        "source_url",
+        "source_type",
+        "evidence_summary",
+        "evidence_snippet",
+        "rejection_reason",
+    ]:
+        value = _extract_string_field(normalized, key)
+        if value is not None:
+            fields[key] = value
+
+    for key in [
+        "ai_infra_relevance",
+        "underfollowed_signal",
+        "rerated_risk",
+        "confidence",
+    ]:
+        value = _extract_number_field(normalized, key)
+        if value is not None:
+            fields[key] = value
+
+    bool_value = _extract_bool_field(normalized, "is_relevant")
+    if bool_value is not None:
+        fields["is_relevant"] = bool_value
+
+    if not fields:
+        return None
+
+    if "evidence_summary" not in fields:
+        fields["evidence_summary"] = "Partial evidence recovered from truncated model output."
+
+    return {"evidence": [fields]}
+
+
+def _extract_string_field(text: str, key: str) -> str | None:
+    marker = f'"{key}"'
+    start = text.find(marker)
+    if start < 0:
+        return None
+    colon = text.find(":", start + len(marker))
+    if colon < 0:
+        return None
+    quote = text.find('"', colon + 1)
+    if quote < 0:
+        return None
+
+    chars: list[str] = []
+    escape = False
+    for idx in range(quote + 1, len(text)):
+        char = text[idx]
+        if escape:
+            chars.append(char)
+            escape = False
+            continue
+        if char == "\\":
+            escape = True
+            continue
+        if char == '"':
+            return "".join(chars).strip()
+        chars.append(char)
+
+    return "".join(chars).strip() or None
+
+
+def _extract_number_field(text: str, key: str) -> float | None:
+    import re
+
+    match = re.search(rf'"{re.escape(key)}"\s*:\s*(-?\d+(?:\.\d+)?)', text)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _extract_bool_field(text: str, key: str) -> bool | None:
+    import re
+
+    match = re.search(rf'"{re.escape(key)}"\s*:\s*(true|false)', text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return match.group(1).lower() == "true"
