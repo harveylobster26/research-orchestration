@@ -23,7 +23,7 @@ class SearxngSettings:
     base_url: str = "http://127.0.0.1:8081"
     default_engines: list[str] = field(default_factory=list)
     language: str = "en-US"
-    results_per_query: int = 10
+    results_per_query: int = 12
     safe_search: int = 0
     timeout_seconds: int = 30
     preferred_domains: list[str] = field(
@@ -43,6 +43,9 @@ class SearxngSettings:
             "networkworld.com",
             "datacenterdynamics.com",
             "manufacturingdive.com",
+            "dwarkesh.com",
+            "lexfridman.com",
+            "a16z.com",
         ]
     )
     blocked_domains: list[str] = field(
@@ -64,7 +67,7 @@ class SearxngSettings:
 class FetchSettings:
     user_agent: str = "local-research-orchestrator/0.1"
     timeout_seconds: int = 30
-    max_documents: int = 20
+    max_documents: int = 36
     max_chars_per_document: int = 20000
 
 
@@ -75,7 +78,7 @@ class PipelineSettings:
         "bottlenecks, gather evidence, rank candidates, reject weak ideas, and "
         "produce a markdown brief."
     )
-    max_queries: int = 6
+    max_queries: int = 18
     critique_enabled: bool = False
     profile: str = "early_discovery_ai_infra"
 

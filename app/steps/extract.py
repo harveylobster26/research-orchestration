@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.config import AppSettings
 from app.models import ExtractionResult
 from app.providers.ollama_client import OllamaClient
 from app.schemas import Evidence, FetchedDocument, Plan
-from app.utils import domain_for_url, read_profile_prompt
+from app.utils import domain_for_url, read_profile_prompt, slugify, write_json
 
 
 def extract_evidence(
@@ -12,6 +14,7 @@ def extract_evidence(
     ollama: OllamaClient,
     plan: Plan,
     documents: list[FetchedDocument],
+    run_dir: Path | None = None,
 ) -> ExtractionResult:
     prompt_template = read_profile_prompt(
         settings.prompts_path,
@@ -34,6 +37,8 @@ def extract_evidence(
             f"Document title: {document.title}\n"
             f"Document text:\n{document.clean_text}\n"
         )
+        artifact_name = f"{index:03d}-{slugify(document.title or document.url, 60)}"
+        artifact_dir = run_dir / 'artifacts' / 'extract' if run_dir is not None else None
         try:
             raw = ollama.generate_json(
                 prompt,
@@ -41,12 +46,17 @@ def extract_evidence(
                 temperature=0.0,
                 timeout_seconds=settings.ollama.utility_timeout_seconds,
             )
+            if artifact_dir is not None:
+                write_json(artifact_dir / f'{artifact_name}.json', raw)
             items = raw.get("evidence") or [_fallback_rejection(document)]
         except Exception as exc:
             print(
                 f"[pipeline] extract warning for document {index}/{len(documents)}: {exc}",
                 flush=True,
             )
+            failure_payload = {"error": str(exc), "url": document.url, "title": document.title}
+            if artifact_dir is not None:
+                write_json(artifact_dir / f'{artifact_name}.error.json', failure_payload)
             items = [_fallback_rejection(document, reason=str(exc))]
 
         for item in items:

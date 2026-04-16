@@ -11,6 +11,7 @@ from app.schemas import PipelineArtifacts, RunManifest
 from app.steps.extract import extract_evidence
 from app.steps.fetch import fetch_documents
 from app.steps.plan import build_plan
+from app.steps.podcast_search import discover_podcast_transcripts
 from app.steps.score import rank_companies
 from app.steps.search import run_search
 from app.steps.synthesize import synthesize_brief
@@ -26,6 +27,7 @@ class ResearchPipeline:
 
     def run(self, objective: str) -> PipelineArtifacts:
         run_dir = build_run_dir(self.settings.data_path)
+        documents_cache_dir = self.settings.data_path / 'documents'
         manifest = RunManifest(
             run_id=Path(run_dir).name,
             objective=objective,
@@ -35,18 +37,24 @@ class ResearchPipeline:
         self._log(f"run dir: {run_dir}")
 
         self._log("stage: planning")
-        plan = build_plan(self.settings, self.ollama, objective)
+        plan = build_plan(self.settings, self.ollama, objective, run_dir=run_dir)
         write_json(run_dir / "plan.json", plan.to_dict())
 
         self._log(f"stage: search ({len(plan.queries)} queries)")
         search_results = run_search(plan, self.searxng)
         write_json(run_dir / "search_results.json", [item.to_dict() for item in search_results])
 
+        self._log("stage: podcast transcripts")
+        podcast_results = discover_podcast_transcripts(self.searxng)
+        write_json(run_dir / "podcast_results.json", [item.to_dict() for item in podcast_results])
+
+        all_search_results = [*search_results, *podcast_results]
+
         self._log("stage: fetch")
         documents = fetch_documents(
-            search_results,
+            all_search_results,
             self.fetcher,
-            run_dir / "cache",
+            documents_cache_dir,
             self.settings.fetch,
         )
         write_json(run_dir / "documents.json", [item.to_dict() for item in documents])
@@ -58,6 +66,7 @@ class ResearchPipeline:
             self.ollama,
             plan,
             documents,
+            run_dir=run_dir,
         )
         write_json(
             run_dir / "evidence.json",
@@ -91,7 +100,7 @@ class ResearchPipeline:
         return PipelineArtifacts(
             manifest=manifest,
             plan=plan,
-            search_results=search_results,
+            search_results=all_search_results,
             documents=documents,
             evidence=extracted.evidence + extracted.rejected,
             ranked_companies=ranked_companies,

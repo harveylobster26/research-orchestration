@@ -13,7 +13,7 @@ class SearxngClient:
     def __init__(self, settings: SearxngSettings) -> None:
         self.settings = settings
 
-    def search(self, query: str, limit: int | None = None) -> SearchBatch:
+    def search(self, query: str, limit: int | None = None, time_range: str | None = None) -> SearchBatch:
         params = {
             "q": query,
             "format": "json",
@@ -22,6 +22,8 @@ class SearxngClient:
         }
         if self.settings.default_engines:
             params["engines"] = ",".join(self.settings.default_engines)
+        if time_range:
+            params["time_range"] = time_range
 
         url = f"{self.settings.base_url.rstrip('/')}/search?{urlencode(params)}"
         try:
@@ -85,9 +87,9 @@ class SearxngClient:
             score += 8
         if any(token in domain for token in ["investor", "ir.", "sec.gov"]):
             score += 6
-        if any(token in title for token in ["earnings", "transcript", "investor", "conference", "presentation", "backlog", "orders"]):
+        if any(token in title for token in ["earnings", "transcript", "investor", "conference", "presentation", "backlog", "orders", "podcast"]):
             score += 5
-        if any(token in snippet for token in ["backlog", "lead time", "orders", "liquid cooling", "switchgear", "transformer", "optical", "transceiver"]):
+        if any(token in snippet for token in ["backlog", "lead time", "orders", "liquid cooling", "switchgear", "transformer", "optical", "transceiver", "transcript"]):
             score += 3
         if any(token in domain for token in ["arxiv.org", "nature.com", "mdpi.com", "science.gov", "sciencedirect.com", "springer.com"]):
             score -= 4

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from html import unescape
 from html.parser import HTMLParser
@@ -16,17 +17,42 @@ class PageFetcher:
         self.settings = settings
 
     def fetch(self, result: SearchResult, cache_dir: Path) -> FetchedDocument:
+        doc_key = f"{slugify(result.title, 40)}-{hash_text(result.url)}"
+        raw_path = ensure_dir(cache_dir / "raw") / f"{doc_key}.html"
+        clean_path = ensure_dir(cache_dir / "clean") / f"{doc_key}.txt"
+        meta_path = ensure_dir(cache_dir / "meta") / f"{doc_key}.json"
+
+        if raw_path.exists() and clean_path.exists():
+            clean_text = clean_path.read_text()
+            metadata = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+            return FetchedDocument(
+                url=result.url,
+                title=metadata.get("title", result.title),
+                raw_html_path=str(raw_path),
+                clean_text_path=str(clean_path),
+                clean_text=clean_text,
+                content_type=metadata.get("content_type", "text/html"),
+            )
+
         req = Request(result.url, headers={"User-Agent": self.settings.user_agent})
         with urlopen(req, timeout=self.settings.timeout_seconds) as response:
             content_type = response.headers.get_content_type()
             html = response.read().decode("utf-8", errors="replace")
 
         clean_text = clean_html_text(html)[: self.settings.max_chars_per_document]
-        doc_key = f"{slugify(result.title, 40)}-{hash_text(result.url)}"
-        raw_path = ensure_dir(cache_dir / "raw") / f"{doc_key}.html"
-        clean_path = ensure_dir(cache_dir / "clean") / f"{doc_key}.txt"
         raw_path.write_text(html)
         clean_path.write_text(clean_text)
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "url": result.url,
+                    "title": result.title,
+                    "content_type": content_type,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
 
         return FetchedDocument(
             url=result.url,
